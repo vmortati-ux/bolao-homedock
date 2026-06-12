@@ -78,8 +78,9 @@ try:
     df_existente = conn.read(ttl=0)
     if df_existente.empty or "Nome" not in df_existente.columns:
         df_existente = pd.DataFrame(columns=["Nome", "Jogo", "gols_casa", "gols_fora", "Data_Hora"])
-except Exception:
+except Exception as e:
     df_existente = pd.DataFrame(columns=["Nome", "Jogo", "gols_casa", "gols_fora", "Data_Hora"])
+    st.warning(f"Aviso de leitura da planilha: {e}")
 
 palpites_lista = df_existente.to_dict(orient="records")
 
@@ -148,7 +149,6 @@ with aba_palpites:
                             nome_unificado = n
                             break
                     
-                    # 🕒 CAPTURA E CONFIGURAÇÃO DO FUSO HORÁRIO DE SÃO PAULO (UTC -3)
                     fuso_sp = timezone(timedelta(hours=-3))
                     agora_sp = datetime.now(fuso_sp)
                     data_hora_formatada = agora_sp.strftime("%d/%m/%Y %H:%M:%S")
@@ -168,8 +168,8 @@ with aba_palpites:
                         conn.update(data=df_atualizado)
                         st.success(f"Palpite de {nome_unificado} guardado com sucesso às {data_hora_formatada}!")
                         st.rerun()
-                    except Exception as e:
-                        st.error("Erro ao conectar com o banco de dados. Tente novamente.")
+                    except Exception as err:
+                        st.error(f"Erro detalhado ao salvar: {err}")
 
     if nomes_existentes:
         st.markdown("<p style='font-size: 13px; color: #666; margin-bottom: 2px; margin-top: 15px;'>👥 <b>Participantes ja cadastrados:</b></p>", unsafe_allow_html=True)
@@ -203,10 +203,8 @@ with aba_ranking:
         df_ranking.index = df_ranking.index + 1
         st.dataframe(df_ranking, use_container_width=True)
         
-        # 📊 TABELA EXTRA: Histórico completo de palpites em tempo real com data e hora
         st.markdown("### 📋 Histórico Detalhado de Envio")
         if not df_existente.empty:
-            # Reorganiza o dataframe existente para exibição elegante
             df_display = df_existente.copy()
             df_display.columns = ["Colaborador", "Partida", "Gols Casa", "Gols Fora", "Momento do Palpite (Fuso SP)"]
             st.dataframe(df_display, use_container_width=True)
