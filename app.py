@@ -114,8 +114,19 @@ aba_palpites, aba_ranking, aba_admin = st.tabs(["📝 Dar Palpite", "📊 Classi
 # --- ABA 1: PALPITES ---
 with aba_palpites:
     st.subheader("Registre o seu palpite")
+    
+    # 💡 ORIENTAÇÃO VISUAL ADICIONADA AQUI
+    st.markdown("""
+    <div style='background-color: #EBF8FF; padding: 12px; border-radius: 8px; border-left: 4px solid #3182CE; margin-bottom: 15px; font-size: 13px; color: #2B6CB0;'>
+        💡 <b>Orientação Importante:</b> Use sempre <b>exatamente o mesmo nome e sobrenome</b> em todos os seus palpites para garantir que seus pontos acumulem corretamente no ranking geral!
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Lista de nomes únicos já guardados
+    nomes_existentes = sorted(list(set(p["Nome"] for p in st.session_state.palpites)))
+    
     with st.form("form_palpite", clear_on_submit=True):
-        nome = st.text_input("Seu Nome Completo:")
+        nome = st.text_input("Seu Nome Completo:", help="Escreva seu nome da mesma forma que usou nos palpites anteriores.")
         jogo_selecionado = st.selectbox("Escolha a partida:", list(st.session_state.jogos.keys()))
         
         col1, col2 = st.columns(2)
@@ -127,17 +138,35 @@ with aba_palpites:
         enviar = st.form_submit_button("Salvar Palpite 🚀")
         
         if enviar:
-            if nome.strip() == "":
+            nome_limpo = nome.strip()
+            if nome_limpo == "":
                 st.error("Por favor, digite seu nome antes de enviar o palpite.")
             else:
-                st.session_state.palpites = [p for p in st.session_state.palpites if not (p["Nome"].lower() == nome.strip().lower() and p["Jogo"] == jogo_selecionado)]
-                st.session_state.palpites.append({
-                    "Nome": nome.strip(),
-                    "Jogo": jogo_selecionado,
-                    "gols_casa": gols_brasil,
-                    "gols_fora": gols_adversario
-                })
-                st.success(f"Palpite de {nome} para '{jogo_selecionado}' registrado com sucesso!")
+                ja_palpitou = any(p["Nome"].lower() == nome_limpo.lower() and p["Jogo"] == jogo_selecionado for p in st.session_state.palpites)
+                
+                if ja_palpitou:
+                    st.error(f"❌ Atenção, {nome_limpo}! Você já enviou um palpite para este jogo. Não é permitido alterar ou enviar palpites duplicados.")
+                else:
+                    # 🚀 RECONHECIMENTO INTELIGENTE: Se escreveu igual mas mudou maiúscula/minúscula, o sistema corrige para o primeiro nome histórico
+                    nome_unificado = nome_limpo
+                    for n in nomes_existentes:
+                        if n.lower() == nome_limpo.lower():
+                            nome_unificado = n
+                            break
+                    
+                    st.session_state.palpites.append({
+                        "Nome": nome_unificado,
+                        "Jogo": jogo_selecionado,
+                        "gols_casa": gols_brasil,
+                        "gols_fora": gols_adversario
+                    })
+                    st.success(f"Palpite de {nome_unificado} para '{jogo_selecionado}' registrado com sucesso!")
+                    st.rerun()
+
+    # Exibe participantes já registrados para ajudar a lembrar a escrita exata
+    if nomes_existentes:
+        st.markdown("<p style='font-size: 13px; color: #666; margin-bottom: 2px; margin-top: 15px;'>👥 <b>Participantes já cadastrados (use igual se o seu estiver aqui):</b></p>", unsafe_allow_html=True)
+        st.caption(", ".join(nomes_existentes))
 
 # --- ABA 2: RANKING ---
 with aba_ranking:
@@ -182,7 +211,7 @@ with aba_admin:
             col1, col2, col3 = st.columns([2, 2, 1])
             
             val_casa = resultados["real_casa"] if resultados["real_casa"] is not None else 0
-            val_fora = whitespaces = resultados["real_fora"] if resultados["real_fora"] is not None else 0
+            val_fora = resultados["real_fora"] if resultados["real_fora"] is not None else 0
             
             with col1:
                 res_casa = st.number_input("Placar Real Brasil:", min_value=0, value=val_casa, key=f"rc_{jogo}")
