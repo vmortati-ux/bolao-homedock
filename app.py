@@ -3,28 +3,25 @@ import pandas as pd
 from PIL import Image
 import os
 
-# 1. CONFIGURAÇÃO DA PÁGINA
+# 1. CONFIGURACAO DA PAGINA
 st.set_page_config(
-    page_title="Bolão Homedock - Copa 2026", 
+    page_title="Bolao Homedock - Copa 2026", 
     page_icon="⚽", 
     layout="wide"
 )
 
-# Estilização customizada com a identidade visual da Homedock
+# Estilizacao customizada com a identidade visual da Homedock
 st.markdown("""
     <style>
-    /* Fundo Off-white e fontes mais limpas */
     .stApp {
         background-color: #FAF9F6;
         color: #111111;
     }
-    /* Estilo dos títulos principais */
     h1, h2, h3 {
         font-family: 'Plus Jakarta Sans', sans-serif !important;
         color: #111111 !important;
         font-weight: 700 !important;
     }
-    /* Botão principal com a cor preta da Homedock */
     div.stButton > button:first-child {
         background-color: #111111;
         color: #FFFFFF;
@@ -38,7 +35,6 @@ st.markdown("""
         background-color: #333333;
         color: #FFFFFF;
     }
-    /* Abas customizadas */
     button[data-baseweb="tab"] {
         font-size: 14px !important;
         font-weight: 500 !important;
@@ -63,66 +59,60 @@ with col_logo:
 
 with col_titulo:
     st.markdown("<h1 style='margin-bottom: 0; padding-top: 5px;'>🏆 COPA 2026</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #C5A880; font-weight: 600; tracking: 2px; font-size: 13px; text-transform: uppercase; margin-top: 0;'>Arena de Integração Corporativa - Brasil rumo ao topo</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #C5A880; font-weight: 600; tracking: 2px; font-size: 13px; text-transform: uppercase; margin-top: 0;'>Arena de Integracao Corporativa - Brasil rumo ao topo</p>", unsafe_allow_html=True)
 
 st.markdown("---")
 
-# 3. BANCO DE DADOS EM MEMÓRIA
+# 3. BANCO DE DADOS EM MEMORIA
 if "jogos" not in st.session_state:
     st.session_state.jogos = {
-        "Fase de Grupos: Brasil 🇧🇷 x 🇲🇦 Marrocos": {"real_casa": None, "real_fora": None},
-        "Fase de Grupos: Brasil 🇧🇷 x 🇭🇹 Haiti": {"real_casa": None, "real_fora": None},
-        "Fase de Grupos: Brasil 🇧🇷 x 🏴󠁧󠁢󠁳󠁣󠁴󠁿 Escócia": {"real_casa": None, "real_fora": None},
+        "Fase de Grupos: Brasil x Marrocos": {"real_casa": None, "real_fora": None},
+        "Fase de Grupos: Brasil x Haiti": {"real_casa": None, "real_fora": None},
+        "Fase de Grupos: Brasil x Escocia": {"real_casa": None, "real_fora": None},
     }
 
 if "palpites" not in st.session_state:
     st.session_state.palpites = []
 
-# 4. FUNÇÃO DE REGRAS DE PONTOS
+# 4. FUNCAO DE REGRAS DE PONTOS
 def calcular_pontos(p_casa, p_fora, r_casa, r_fora):
     if r_casa is None or r_fora is None:
         return 0 
     
-    # 1. Acerto do Placar Exato -> 6 pontos
     if p_casa == r_casa and p_fora == r_fora:
         return 6
         
-    # 2. Verificação de quem ganhou ou se empatou
     vencedor_palpite = "casa" if p_casa > p_fora else ("fora" if p_fora > p_casa else "empate")
     vencedor_real = "casa" if r_casa > r_fora else ("fora" if r_fora > r_casa else "empate")
     
-    # Acerto parcial -> 3 pontos
     if vencedor_palpite == vencedor_real:
         return 3
         
-    # 3. Erro total -> 0 pontos
     return 0
 
 # 5. QUADRO DE REGRAS VISUAL
 st.markdown("""
-<div style='background-color: #white; padding: 20px; border-radius: 15px; border: 1px solid #E5E5E5; margin-bottom: 25px;'>
-    <h4 style='margin-top:0; color:#111;'>📋 Regulamento de Pontuação Homedock:</h4>
+<div style='background-color: white; padding: 20px; border-radius: 15px; border: 1px solid #E5E5E5; margin-bottom: 25px;'>
+    <h4 style='margin-top:0; color:#111;'>📋 Regulamento de Pontuacao Homedock:</h4>
     <span style='background-color:#111; color:white; padding: 3px 10px; border-radius: 5px; font-weight:bold; font-size:12px; margin-right:10px;'>6 PONTOS</span> Acerto exato do placar (Ex: Palpite 2x1 | Resultado 2x1)<br>
-    <span style='background-color:#C5A880; color:white; padding: 3px 10px; border-radius: 5px; font-weight:bold; font-size:12px; margin-right:10px; margin-top:5px; display:inline-block;'>3 PONTOS</span> Acerto do vencedor ou do empate errando o número de gols (Ex: Palpite 1x0 | Resultado 3x1)<br>
+    <span style='background-color:#C5A880; color:white; padding: 3px 10px; border-radius: 5px; font-weight:bold; font-size:12px; margin-right:10px; margin-top:5px; display:inline-block;'>3 PONTOS</span> Acerto do vencedor ou do empate errando o numero de gols (Ex: Palpite 1x0 | Resultado 3x1)<br>
     <span style='background-color:#E5E5E5; color:#555; padding: 3px 10px; border-radius: 5px; font-weight:bold; font-size:12px; margin-right:10px; margin-top:5px; display:inline-block;'>0 PONTOS</span> Erro total do placar e do vencedor/empate (Ex: Palpite 0x1 ou Empate | Resultado 2x1)
 </div>
 """, unsafe_allow_html=True)
 
-# 6. CRIAÇÃO DAS ABAS DO APP
-aba_palpites, aba_ranking, aba_admin = st.tabs(["📝 Dar Palpite", "📊 Classificação Geral", "⚙️ Painel do Administrador"])
+# 6. CRIACAO DAS ABAS DO APP
+aba_palpites, aba_ranking, aba_admin = st.tabs(["📝 Dar Palpite", "📊 Classificacao Geral", "⚙️ Painel do Administrador"])
 
 # --- ABA 1: PALPITES ---
 with aba_palpites:
     st.subheader("Registre o seu palpite")
     
-    # 💡 ORIENTAÇÃO VISUAL ADICIONADA AQUI
     st.markdown("""
     <div style='background-color: #EBF8FF; padding: 12px; border-radius: 8px; border-left: 4px solid #3182CE; margin-bottom: 15px; font-size: 13px; color: #2B6CB0;'>
-        💡 <b>Orientação Importante:</b> Use sempre <b>exatamente o mesmo nome e sobrenome</b> em todos os seus palpites para garantir que seus pontos acumulem corretamente no ranking geral!
+        💡 <b>Orientacao Importante:</b> Use sempre <b>exatamente o mesmo nome e sobrenome</b> em todos os seus palpites para garantir que seus pontos acumulem corretamente no ranking geral!
     </div>
     """, unsafe_allow_html=True)
     
-    # Lista de nomes únicos já guardados
     nomes_existentes = sorted(list(set(p["Nome"] for p in st.session_state.palpites)))
     
     with st.form("form_palpite", clear_on_submit=True):
@@ -133,7 +123,7 @@ with aba_palpites:
         with col1:
             gols_brasil = st.number_input("Gols do Brasil:", min_value=0, max_value=15, value=1, step=1)
         with col2:
-            gols_adversario = st.number_input("Gols do Adversário:", min_value=0, max_value=15, value=0, step=1)
+            gols_adversario = st.number_input("Gols do Adversario:", min_value=0, max_value=15, value=0, step=1)
             
         enviar = st.form_submit_button("Salvar Palpite 🚀")
         
@@ -145,9 +135,8 @@ with aba_palpites:
                 ja_palpitou = any(p["Nome"].lower() == nome_limpo.lower() and p["Jogo"] == jogo_selecionado for p in st.session_state.palpites)
                 
                 if ja_palpitou:
-                    st.error(f"❌ Atenção, {nome_limpo}! Você já enviou um palpite para este jogo. Não é permitido alterar ou enviar palpites duplicados.")
+                    st.error(f"Atencao, {nome_limpo}! Voce ja enviou um palpite para este jogo. Nao e permitido palpites duplicados.")
                 else:
-                    # 🚀 RECONHECIMENTO INTELIGENTE: Se escreveu igual mas mudou maiúscula/minúscula, o sistema corrige para o primeiro nome histórico
                     nome_unificado = nome_limpo
                     for n in nomes_existentes:
                         if n.lower() == nome_limpo.lower():
@@ -163,14 +152,13 @@ with aba_palpites:
                     st.success(f"Palpite de {nome_unificado} para '{jogo_selecionado}' registrado com sucesso!")
                     st.rerun()
 
-    # Exibe participantes já registrados para ajudar a lembrar a escrita exata
     if nomes_existentes:
-        st.markdown("<p style='font-size: 13px; color: #666; margin-bottom: 2px; margin-top: 15px;'>👥 <b>Participantes já cadastrados (use igual se o seu estiver aqui):</b></p>", unsafe_allow_html=True)
+        st.markdown("<p style='font-size: 13px; color: #666; margin-bottom: 2px; margin-top: 15px;'>👥 <b>Participantes ja cadastrados (use igual se o seu estiver aqui):</b></p>", unsafe_allow_html=True)
         st.caption(", ".join(nomes_existentes))
 
 # --- ABA 2: RANKING ---
 with aba_ranking:
-    st.subheader("Classificação Atualizada dos Colaboradores")
+    st.subheader("Classificacao Atualizada dos Colaboradores")
     
     pontuacao_geral = {}
     for p in st.session_state.palpites:
@@ -188,18 +176,18 @@ with aba_ranking:
         pontuacao_geral[nome_func] += pts
 
     if pontuacao_geral:
-        df_ranking = pd.DataFrame(list(pontuacao_geral.items()), columns=["Colaborador Homedock", "Pontuação Total"])
-        df_ranking = df_ranking.sort_values(by="Pontuação Total", ascending=False).reset_index(drop=True)
+        df_ranking = pd.DataFrame(list(pontuacao_geral.items()), columns=["Colaborador Homedock", "Pontuacao Total"])
+        df_ranking = df_ranking.sort_values(by="Pontuacao Total", ascending=False).reset_index(drop=True)
         df_ranking.index = df_ranking.index + 1
         st.dataframe(df_ranking, use_container_width=True)
     else:
-        st.info("Nenhum palpite enviado até o momento. Seja o primeiro a palpitar na aba ao lado!")
+        st.info("Nenhum palpite enviado ate o momento. Seja o primeiro a palpitar na aba ao lado!")
 
 # --- ABA 3: ADMINISTRADOR ---
 with aba_admin:
     st.subheader("Painel de Controle Exclusivo")
     
-    senha_admin = st.text_input("Digite a senha master para acessar as configurações:", type="password")
+    senha_admin = st.text_input("Digite a senha master para acessar as configuracoes:", type="password")
     
     if senha_admin == "hmdk":
         st.success("Acesso Liberado com sucesso!")
@@ -216,7 +204,7 @@ with aba_admin:
             with col1:
                 res_casa = st.number_input("Placar Real Brasil:", min_value=0, value=val_casa, key=f"rc_{jogo}")
             with col2:
-                res_fora = st.number_input("Placar Real Adversário:", min_value=0, value=val_fora, key=f"rf_{jogo}")
+                res_fora = st.number_input("Placar Real Adversario:", min_value=0, value=val_fora, key=f"rf_{jogo}")
             with col3:
                 st.write("")
                 st.write("")
@@ -227,12 +215,12 @@ with aba_admin:
                     st.rerun()
             st.markdown("---")
 
-        st.subheader("➕ Adicionar Jogo do Brasil (Próximas Fases)")
-        novo_jogo = st.text_input("Exemplo: Oitavas de Final: Brasil 🇧🇷 x 🇩🇪 Alemanha")
+        st.subheader("➕ Adicionar Jogo do Brasil (Proximas Fases)")
+        novo_jogo = st.text_input("Exemplo: Oitavas de Final: Brasil x Alemanha")
         if st.button("Inserir Nova Partida no Sistema"):
             if novo_jogo:
                 st.session_state.jogos[novo_jogo] = {"real_casa": None, "real_fora": None}
-                st.success(f"'{novo_jogo}' adicionado com sucesso nas opções de palpites!")
+                st.success(f"'{novo_jogo}' adicionado com sucesso nas opcoes de palpites!")
                 st.rerun()
     elif senha_admin != "":
         st.error("Senha incorreta. Acesso negado.")
