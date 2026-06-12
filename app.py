@@ -50,15 +50,17 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# CONFIGURAÇÕES DO GOOGLE FORMS (Mapeadas automaticamente do seu link)
+# CONFIGURAÇÕES DO GOOGLE FORMS
 ID_FORMULARIO = "1FAIpQLSe0o0aZx7k8XhGZ0C4C-AENyJU-B7943JDfjJosULfTOlWFww" 
 ENTRY_NOME = "entry.233513364"
 ENTRY_JOGO = "entry.1342686001"
 ENTRY_CASA = "entry.2062534064"
 ENTRY_FORA = "entry.188899881"
 
-# 2. TOPO COM LOGO RESTRITO E TITULO DIRETO
-col_logo, col_titulo = st.columns([0.5, 3.5])
+# 2. TOPO COM LOGO E TITULO ALINHADOS NA MESMA ALTURA
+# Usamos vertical_alignment="center" para alinhar o meio da imagem com o meio do texto
+col_logo, col_titulo = st.columns([0.6, 3.4], vertical_alignment="center")
+
 with col_logo:
     if os.path.exists("image_27b81c.png"):
         logo = Image.open("image_27b81c.png")
@@ -67,7 +69,8 @@ with col_logo:
         st.subheader("HOMEDOCK")
 
 with col_titulo:
-    st.markdown("<h1 style='margin-bottom: 0; padding-top: 10px;'>🏆 COPA 2026</h1>", unsafe_allow_html=True)
+    # Usamos h2 com uma margem zerada e tamanho controlado para casar perfeitamente com a logo
+    st.markdown("<h2 style='margin: 0; padding: 0; font-size: 28px; line-height: 1;'>🏆 COPA 2026</h2>", unsafe_allow_html=True)
 
 st.markdown("---")
 
@@ -87,7 +90,6 @@ try:
     if df_existente.empty:
         df_existente = pd.DataFrame(columns=["Data_Hora", "Nome", "Jogo", "gols_casa", "gols_fora"])
     else:
-        # Garante o mapeamento correto independente dos títulos exatos gerados pelo Forms
         df_existente.columns = ["Data_Hora", "Nome", "Jogo", "gols_casa", "gols_fora"]
 except Exception:
     df_existente = pd.DataFrame(columns=["Data_Hora", "Nome", "Jogo", "gols_casa", "gols_fora"])
@@ -159,7 +161,6 @@ with aba_palpites:
                             nome_unificado = n
                             break
                     
-                    # Envia a requisição via POST simulando o envio invisível do Forms
                     url_form = f"https://docs.google.com/forms/d/e/{ID_FORMULARIO}/formResponse"
                     payload = {
                         ENTRY_NOME: nome_unificado,
@@ -188,69 +189,3 @@ with aba_ranking:
     
     pontuacao_geral = {}
     for p in palpites_lista:
-        nome_func = p["Nome"]
-        jogo_func = p["Jogo"]
-        
-        if pd.isna(nome_func) or pd.isna(jogo_func) or str(nome_func).strip() == "" or str(nome_func) == "Nome":
-            continue
-            
-        resultado_real = st.session_state.jogos.get(jogo_func, {"real_casa": None, "real_fora": None})
-        r_c = resultado_real["real_casa"]
-        r_f = resultado_real["real_fora"]
-        
-        try:
-            pts = calcular_pontos(int(p["gols_casa"]), int(p["gols_fora"]), r_c, r_f)
-            if nome_func not in pontuacao_geral:
-                pontuacao_geral[nome_func] = 0
-            pontuacao_geral[nome_func] += pts
-        except Exception:
-            continue
-
-    if pontuacao_geral:
-        df_ranking = pd.DataFrame(list(pontuacao_geral.items()), columns=["Colaborador Homedock", "Pontuacao Total"])
-        df_ranking = df_ranking.sort_values(by="Pontuacao Total", ascending=False).reset_index(drop=True)
-        df_ranking.index = df_ranking.index + 1
-        st.dataframe(df_ranking, use_container_width=True)
-        
-        st.markdown("### 📋 Histórico Detalhado de Envio")
-        if not df_existente.empty:
-            df_display = df_existente.copy()
-            df_display.columns = ["Momento do Palpite", "Colaborador", "Partida", "Gols Casa", "Gols Fora"]
-            st.dataframe(df_display, use_container_width=True)
-    else:
-        st.info("Nenhum palpite enviado ate o momento.")
-
-# --- ABA 3: ADMINISTRADOR ---
-with aba_admin:
-    st.subheader("Painel de Controle Exclusivo")
-    senha_admin = st.text_input("Digite a senha master:", type="password")
-    
-    if senha_admin == "hmdk":
-        st.success("Acesso Liberado!")
-        for jogo, resultados in st.session_state.jogos.items():
-            st.markdown(f"**{jogo}**")
-            col1, col2, col3 = st.columns([2, 2, 1])
-            val_casa = resultados["real_casa"] if resultados["real_casa"] is not None else 0
-            val_fora = resultados["real_fora"] if resultados["real_fora"] is not None else 0
-            
-            with col1:
-                res_casa = st.number_input("Placar Real Brasil:", min_value=0, value=val_casa, key=f"rc_{jogo}")
-            with col2:
-                res_fora = st.number_input("Placar Real Adversario:", min_value=0, value=val_fora, key=f"rf_{jogo}")
-            with col3:
-                st.write("")
-                st.write("")
-                if st.button("Confirmar", key=f"btn_{jogo}"):
-                    st.session_state.jogos[jogo]["real_casa"] = res_casa
-                    st.session_state.jogos[jogo]["real_fora"] = res_fora
-                    st.success("Placar updated!")
-                    st.rerun()
-            st.markdown("---")
-
-        st.subheader("➕ Adicionar Jogo do Brasil")
-        novo_jogo = st.text_input("Exemplo: Oitavas de Final: Brasil x Alemanha")
-        if st.button("Inserir Nova Partida"):
-            if novo_jogo:
-                st.session_state.jogos[novo_jogo] = {"real_casa": None, "real_fora": None}
-                st.success("Jogo adicionado!")
-                st.rerun()
