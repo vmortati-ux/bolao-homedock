@@ -48,8 +48,9 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 2. TOPO COM LOGO DA HOMEDOCK
-col_logo, col_titulo = st.columns([1, 3])
+# 2. TOPO COM LOGO RESTRITO E TITULO DIRETO
+# Mudamos a proporcao de [1, 3] para [0.5, 3.5] para reduzir consideravelmente o tamanho do logo
+col_logo, col_titulo = st.columns([0.5, 3.5])
 with col_logo:
     if os.path.exists("image_27b81c.png"):
         logo = Image.open("image_27b81c.png")
@@ -58,8 +59,7 @@ with col_logo:
         st.subheader("HOMEDOCK")
 
 with col_titulo:
-    st.markdown("<h1 style='margin-bottom: 0; padding-top: 5px;'>🏆 COPA 2026</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #C5A880; font-weight: 600; tracking: 2px; font-size: 13px; text-transform: uppercase; margin-top: 0;'>Arena de Integracao Corporativa - Brasil rumo ao topo</p>", unsafe_allow_html=True)
+    st.markdown("<h1 style='margin-bottom: 0; padding-top: 10px;'>🏆 COPA 2026</h1>", unsafe_allow_html=True)
 
 st.markdown("---")
 
@@ -179,48 +179,4 @@ with aba_ranking:
         df_ranking = pd.DataFrame(list(pontuacao_geral.items()), columns=["Colaborador Homedock", "Pontuacao Total"])
         df_ranking = df_ranking.sort_values(by="Pontuacao Total", ascending=False).reset_index(drop=True)
         df_ranking.index = df_ranking.index + 1
-        st.dataframe(df_ranking, use_container_width=True)
-    else:
-        st.info("Nenhum palpite enviado ate o momento. Seja o primeiro a palpitar na aba ao lado!")
-
-# --- ABA 3: ADMINISTRADOR ---
-with aba_admin:
-    st.subheader("Painel de Controle Exclusivo")
-    
-    senha_admin = st.text_input("Digite a senha master para acessar as configuracoes:", type="password")
-    
-    if senha_admin == "hmdk":
-        st.success("Acesso Liberado com sucesso!")
-        st.write("Atualize os resultados reais abaixo para que o sistema mude o ranking na hora.")
-        st.markdown("---")
-        
-        for jogo, resultados in st.session_state.jogos.items():
-            st.markdown(f"**{jogo}**")
-            col1, col2, col3 = st.columns([2, 2, 1])
-            
-            val_casa = resultados["real_casa"] if resultados["real_casa"] is not None else 0
-            val_fora = resultados["real_fora"] if resultados["real_fora"] is not None else 0
-            
-            with col1:
-                res_casa = st.number_input("Placar Real Brasil:", min_value=0, value=val_casa, key=f"rc_{jogo}")
-            with col2:
-                res_fora = st.number_input("Placar Real Adversario:", min_value=0, value=val_fora, key=f"rf_{jogo}")
-            with col3:
-                st.write("")
-                st.write("")
-                if st.button("Confirmar", key=f"btn_{jogo}"):
-                    st.session_state.jogos[jogo]["real_casa"] = res_casa
-                    st.session_state.jogos[jogo]["real_fora"] = res_fora
-                    st.success("Placar atualizado!")
-                    st.rerun()
-            st.markdown("---")
-
-        st.subheader("➕ Adicionar Jogo do Brasil (Proximas Fases)")
-        novo_jogo = st.text_input("Exemplo: Oitavas de Final: Brasil x Alemanha")
-        if st.button("Inserir Nova Partida no Sistema"):
-            if novo_jogo:
-                st.session_state.jogos[novo_jogo] = {"real_casa": None, "real_fora": None}
-                st.success(f"'{novo_jogo}' adicionado com sucesso nas opcoes de palpites!")
-                st.rerun()
-    elif senha_admin != "":
-        st.error("Senha incorreta. Acesso negado.")
+        st.dataframe(df_ranking, use
