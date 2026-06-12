@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from PIL import Image
 import os
-from datetime import datetime, timedelta, timezone
+import requests
 from streamlit_gsheets import GSheetsConnection
 
 # 1. CONFIGURACAO DA PAGINA
@@ -50,6 +50,13 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# CONFIGURAÇÕES DO GOOGLE FORMS (Mapeadas automaticamente do seu link)
+ID_FORMULARIO = "1FAIpQLSe0o0aZx7k8XhGZ0C4C-AENyJU-B7943JDfjJosULfTOlWFww" 
+ENTRY_NOME = "entry.233513364"
+ENTRY_JOGO = "entry.1342686001"
+ENTRY_CASA = "entry.2062534064"
+ENTRY_FORA = "entry.188899881"
+
 # 2. TOPO COM LOGO RESTRITO E TITULO DIRETO
 col_logo, col_titulo = st.columns([0.5, 3.5])
 with col_logo:
@@ -72,15 +79,18 @@ if "jogos" not in st.session_state:
         "Fase de Grupos: Brasil x Escocia": {"real_casa": None, "real_fora": None},
     }
 
-# LIGAÇÃO AO GOOGLE SHEETS
+# LEITURA DOS DADOS (Apenas leitura via conexão nativa do Streamlit)
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
     df_existente = conn.read(ttl=0)
-    if df_existente.empty or "Nome" not in df_existente.columns:
-        df_existente = pd.DataFrame(columns=["Nome", "Jogo", "gols_casa", "gols_fora", "Data_Hora"])
-except Exception as e:
-    df_existente = pd.DataFrame(columns=["Nome", "Jogo", "gols_casa", "gols_fora", "Data_Hora"])
-    st.warning(f"Aviso de leitura da planilha: {e}")
+    
+    if df_existente.empty:
+        df_existente = pd.DataFrame(columns=["Data_Hora", "Nome", "Jogo", "gols_casa", "gols_fora"])
+    else:
+        # Garante o mapeamento correto independente dos títulos exatos gerados pelo Forms
+        df_existente.columns = ["Data_Hora", "Nome", "Jogo", "gols_casa", "gols_fora"]
+except Exception:
+    df_existente = pd.DataFrame(columns=["Data_Hora", "Nome", "Jogo", "gols_casa", "gols_fora"])
 
 palpites_lista = df_existente.to_dict(orient="records")
 
@@ -149,27 +159,24 @@ with aba_palpites:
                             nome_unificado = n
                             break
                     
-                    fuso_sp = timezone(timedelta(hours=-3))
-                    agora_sp = datetime.now(fuso_sp)
-                    data_hora_formatada = agora_sp.strftime("%d/%m/%Y %H:%M:%S")
-                    
-                    novo_palpite = {
-                        "Nome": nome_unificado,
-                        "Jogo": jogo_selecionado,
-                        "gols_casa": int(gols_brasil),
-                        "gols_fora": int(gols_adversario),
-                        "Data_Hora": data_hora_formatada
+                    # Envia a requisição via POST simulando o envio invisível do Forms
+                    url_form = f"https://docs.google.com/forms/d/e/{ID_FORMULARIO}/formResponse"
+                    payload = {
+                        ENTRY_NOME: nome_unificado,
+                        ENTRY_JOGO: jogo_selecionado,
+                        ENTRY_CASA: int(gols_brasil),
+                        ENTRY_FORA: int(gols_adversario)
                     }
                     
-                    df_novo = pd.DataFrame([novo_palpite])
-                    df_atualizado = pd.concat([df_existente, df_novo], ignore_index=True)
-                    
                     try:
-                        conn.update(data=df_atualizado)
-                        st.success(f"Palpite de {nome_unificado} guardado com sucesso às {data_hora_formatada}!")
-                        st.rerun()
-                    except Exception as err:
-                        st.error(f"Erro detalhado ao salvar: {err}")
+                        res = requests.post(url_form, data=payload)
+                        if res.status_code == 200:
+                            st.success(f"Palpite de {nome_unificado} guardado com sucesso na nuvem!")
+                            st.rerun()
+                        else:
+                            st.error("Erro temporário ao enviar dados para o servidor do Google.")
+                    except Exception as e:
+                        st.error(f"Falha de conexão: {e}")
 
     if nomes_existentes:
         st.markdown("<p style='font-size: 13px; color: #666; margin-bottom: 2px; margin-top: 15px;'>👥 <b>Participantes ja cadastrados:</b></p>", unsafe_allow_html=True)
@@ -184,18 +191,20 @@ with aba_ranking:
         nome_func = p["Nome"]
         jogo_func = p["Jogo"]
         
-        if pd.isna(nome_func) or pd.isna(jogo_func):
+        if pd.isna(nome_func) or pd.isna(jogo_func) or str(nome_func).strip() == "" or str(nome_func) == "Nome":
             continue
             
         resultado_real = st.session_state.jogos.get(jogo_func, {"real_casa": None, "real_fora": None})
         r_c = resultado_real["real_casa"]
         r_f = resultado_real["real_fora"]
         
-        pts = calcular_pontos(int(p["gols_casa"]), int(p["gols_fora"]), r_c, r_f)
-        
-        if nome_func not in pontuacao_geral:
-            pontuacao_geral[nome_func] = 0
-        pontuacao_geral[nome_func] += pts
+        try:
+            pts = calcular_pontos(int(p["gols_casa"]), int(p["gols_fora"]), r_c, r_f)
+            if nome_func not in pontuacao_geral:
+                pontuacao_geral[nome_func] = 0
+            pontuacao_geral[nome_func] += pts
+        except Exception:
+            continue
 
     if pontuacao_geral:
         df_ranking = pd.DataFrame(list(pontuacao_geral.items()), columns=["Colaborador Homedock", "Pontuacao Total"])
@@ -206,7 +215,7 @@ with aba_ranking:
         st.markdown("### 📋 Histórico Detalhado de Envio")
         if not df_existente.empty:
             df_display = df_existente.copy()
-            df_display.columns = ["Colaborador", "Partida", "Gols Casa", "Gols Fora", "Momento do Palpite (Fuso SP)"]
+            df_display.columns = ["Momento do Palpite", "Colaborador", "Partida", "Gols Casa", "Gols Fora"]
             st.dataframe(df_display, use_container_width=True)
     else:
         st.info("Nenhum palpite enviado ate o momento.")
