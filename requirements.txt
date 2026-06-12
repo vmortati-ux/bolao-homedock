@@ -1,1 +1,3 @@
 st-gsheets-connection
+[connections.gsheets]
+spreadsheet = "LINK_DA_PLANILHA_GERADA_PELO_GOOGLE_FORMS"
