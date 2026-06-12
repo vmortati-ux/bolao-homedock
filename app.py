@@ -5,7 +5,7 @@ import os
 
 # 1. CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(
-    page_title="Bolão Homedock - Jogos do Brasil", 
+    page_title="Bolão Homedock - Copa 2026", 
     page_icon="⚽", 
     layout="wide"
 )
@@ -55,7 +55,6 @@ st.markdown("""
 # 2. TOPO COM LOGO DA HOMEDOCK
 col_logo, col_titulo = st.columns([1, 3])
 with col_logo:
-    # Tenta carregar a imagem do logo enviada
     if os.path.exists("image_27b81c.png"):
         logo = Image.open("image_27b81c.png")
         st.image(logo, use_container_width=True)
@@ -63,42 +62,40 @@ with col_logo:
         st.subheader("HOMEDOCK")
 
 with col_titulo:
-    st.markdown("<h1 style='margin-bottom: 0; padding-top: 5px;'>🏆 BOLÃO DOS FUNCIONÁRIOS</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='margin-bottom: 0; padding-top: 5px;'>🏆 COPA 2026</h1>", unsafe_allow_html=True)
     st.markdown("<p style='color: #C5A880; font-weight: 600; tracking: 2px; font-size: 13px; text-transform: uppercase; margin-top: 0;'>Arena de Integração Corporativa - Brasil rumo ao topo</p>", unsafe_allow_html=True)
 
 st.markdown("---")
 
-# 3. BANCO DE DADOS EM MEMÓRIA (Sessão do Streamlit)
+# 3. BANCO DE DADOS EM MEMÓRIA
 if "jogos" not in st.session_state:
     st.session_state.jogos = {
-        "Fase de Grupos: Brasil 🇧🇷 x 🇷🇸 Sérvia": {"real_casa": None, "real_fora": None},
-        "Fase de Grupos: Brasil 🇧🇷 x 🇨🇭 Suíça": {"real_casa": None, "real_fora": None},
-        "Fase de Grupos: Brasil 🇧🇷 x 🇨🇲 Camarões": {"real_casa": None, "real_fora": None},
+        "Fase de Grupos: Brasil 🇧🇷 x 🇲🇦 Marrocos": {"real_casa": None, "real_fora": None},
+        "Fase de Grupos: Brasil 🇧🇷 x 🇭🇹 Haiti": {"real_casa": None, "real_fora": None},
+        "Fase de Grupos: Brasil 🇧🇷 x 🏴󠁧󠁢󠁳󠁣󠁴󠁿 Escócia": {"real_casa": None, "real_fora": None},
     }
 
 if "palpites" not in st.session_state:
-    # Exemplos iniciais
-    st.session_state.palpites = [
-        {"Nome": "Daniela (CEO)", "Jogo": "Fase de Grupos: Brasil 🇧🇷 x 🇷🇸 Sérvia", "gols_casa": 3, "gols_fora": 1},
-        {"Nome": "Lucas Medeiros", "Jogo": "Fase de Grupos: Brasil 🇧🇷 x 🇷🇸 Sérvia", "gols_casa": 2, "gols_fora": 0},
-    ]
+    st.session_state.palpites = []
 
-# 4. FUNÇÃO DE REGRAS DE PONTOS (6 para cheio, 3 para vencedor/empate)
+# 4. FUNÇÃO DE REGRAS DE PONTOS
 def calcular_pontos(p_casa, p_fora, r_casa, r_fora):
     if r_casa is None or r_fora is None:
         return 0 
     
-    # Acerto do Placar Exato -> 6 pontos
+    # 1. Acerto do Placar Exato -> 6 pontos
     if p_casa == r_casa and p_fora == r_fora:
         return 6
         
-    # Verificação de quem ganhou/empatou -> 3 pontos
+    # 2. Verificação de quem ganhou ou se empatou
     vencedor_palpite = "casa" if p_casa > p_fora else ("fora" if p_fora > p_casa else "empate")
     vencedor_real = "casa" if r_casa > r_fora else ("fora" if r_fora > r_casa else "empate")
     
+    # Acerto parcial -> 3 pontos
     if vencedor_palpite == vencedor_real:
         return 3
         
+    # 3. Erro total -> 0 pontos
     return 0
 
 # 5. QUADRO DE REGRAS VISUAL
@@ -106,7 +103,8 @@ st.markdown("""
 <div style='background-color: #white; padding: 20px; border-radius: 15px; border: 1px solid #E5E5E5; margin-bottom: 25px;'>
     <h4 style='margin-top:0; color:#111;'>📋 Regulamento de Pontuação Homedock:</h4>
     <span style='background-color:#111; color:white; padding: 3px 10px; border-radius: 5px; font-weight:bold; font-size:12px; margin-right:10px;'>6 PONTOS</span> Acerto exato do placar (Ex: Palpite 2x1 | Resultado 2x1)<br>
-    <span style='background-color:#C5A880; color:white; padding: 3px 10px; border-radius: 5px; font-weight:bold; font-size:12px; margin-right:10px; margin-top:5px; display:inline-block;'>3 PONTOS</span> Acerto do vencedor ou do empate errando o placar (Ex: Palpite 1x0 | Resultado 3x1)
+    <span style='background-color:#C5A880; color:white; padding: 3px 10px; border-radius: 5px; font-weight:bold; font-size:12px; margin-right:10px; margin-top:5px; display:inline-block;'>3 PONTOS</span> Acerto do vencedor ou do empate errando o número de gols (Ex: Palpite 1x0 | Resultado 3x1)<br>
+    <span style='background-color:#E5E5E5; color:#555; padding: 3px 10px; border-radius: 5px; font-weight:bold; font-size:12px; margin-right:10px; margin-top:5px; display:inline-block;'>0 PONTOS</span> Erro total do placar e do vencedor/empate (Ex: Palpite 0x1 ou Empate | Resultado 2x1)
 </div>
 """, unsafe_allow_html=True)
 
@@ -132,7 +130,6 @@ with aba_palpites:
             if nome.strip() == "":
                 st.error("Por favor, digite seu nome antes de enviar o palpite.")
             else:
-                # Substitui palpite anterior se o mesmo usuário mandar pro mesmo jogo
                 st.session_state.palpites = [p for p in st.session_state.palpites if not (p["Nome"].lower() == nome.strip().lower() and p["Jogo"] == jogo_selecionado)]
                 st.session_state.palpites.append({
                     "Nome": nome.strip(),
@@ -167,39 +164,46 @@ with aba_ranking:
         df_ranking.index = df_ranking.index + 1
         st.dataframe(df_ranking, use_container_width=True)
     else:
-        st.info("Nenhum palpite enviado ou processado até o momento.")
+        st.info("Nenhum palpite enviado até o momento. Seja o primeiro a palpitar na aba ao lado!")
 
 # --- ABA 3: ADMINISTRADOR ---
 with aba_admin:
     st.subheader("Painel de Controle Exclusivo")
-    st.write("Atualize os resultados reais abaixo para que o sistema mude o ranking na hora.")
     
-    for jogo, resultados in st.session_state.jogos.items():
-        st.markdown(f"**{jogo}**")
-        col1, col2, col3 = st.columns([2, 2, 1])
-        
-        val_casa = resultados["real_casa"] if resultados["real_casa"] is not None else 0
-        val_fora = resultados["real_fora"] if resultados["real_fora"] is not None else 0
-        
-        with col1:
-            res_casa = st.number_input("Placar Real Brasil:", min_value=0, value=val_casa, key=f"rc_{jogo}")
-        with col2:
-            res_fora = st.number_input("Placar Real Adversário:", min_value=0, value=val_fora, key=f"rf_{jogo}")
-        with col3:
-            st.write("")
-            st.write("")
-            if st.button("Confirmar", key=f"btn_{jogo}"):
-                st.session_state.jogos[jogo]["real_casa"] = res_casa
-                st.session_state.jogos[jogo]["real_fora"] = res_fora
-                st.success("Placar atualizado!")
-                st.rerun()
+    senha_admin = st.text_input("Digite a senha master para acessar as configurações:", type="password")
+    
+    if senha_admin == "hmdk":
+        st.success("Acesso Liberado com sucesso!")
+        st.write("Atualize os resultados reais abaixo para que o sistema mude o ranking na hora.")
         st.markdown("---")
+        
+        for jogo, resultados in st.session_state.jogos.items():
+            st.markdown(f"**{jogo}**")
+            col1, col2, col3 = st.columns([2, 2, 1])
+            
+            val_casa = resultados["real_casa"] if resultados["real_casa"] is not None else 0
+            val_fora = whitespaces = resultados["real_fora"] if resultados["real_fora"] is not None else 0
+            
+            with col1:
+                res_casa = st.number_input("Placar Real Brasil:", min_value=0, value=val_casa, key=f"rc_{jogo}")
+            with col2:
+                res_fora = st.number_input("Placar Real Adversário:", min_value=0, value=val_fora, key=f"rf_{jogo}")
+            with col3:
+                st.write("")
+                st.write("")
+                if st.button("Confirmar", key=f"btn_{jogo}"):
+                    st.session_state.jogos[jogo]["real_casa"] = res_casa
+                    st.session_state.jogos[jogo]["real_fora"] = res_fora
+                    st.success("Placar atualizado!")
+                    st.rerun()
+            st.markdown("---")
 
-    # MATA-MATA (Adicionar novas fases)
-    st.subheader("➕ Adicionar Jogo do Brasil (Próximas Fases)")
-    novo_jogo = st.text_input("Exemplo: Oitavas de Final: Brasil 🇧🇷 x 🇩🇪 Alemanha")
-    if st.button("Inserir Nova Partida no Sistema"):
-        if novo_jogo:
-            st.session_state.jogos[novo_jogo] = {"real_casa": None, "real_fora": None}
-            st.success(f"'{novo_jogo}' adicionado com sucesso nas opções de palpites!")
-            st.rerun()
+        st.subheader("➕ Adicionar Jogo do Brasil (Próximas Fases)")
+        novo_jogo = st.text_input("Exemplo: Oitavas de Final: Brasil 🇧🇷 x 🇩🇪 Alemanha")
+        if st.button("Inserir Nova Partida no Sistema"):
+            if novo_jogo:
+                st.session_state.jogos[novo_jogo] = {"real_casa": None, "real_fora": None}
+                st.success(f"'{novo_jogo}' adicionado com sucesso nas opções de palpites!")
+                st.rerun()
+    elif senha_admin != "":
+        st.error("Senha incorreta. Acesso negado.")
