@@ -94,10 +94,11 @@ if "jogos" not in st.session_state:
         "Fase de Grupos: Brasil x Escocia": {"real_casa": None, "real_fora": None},
     }
 
-# LEITURA DOS DADOS (Via conexão nativa do Streamlit)
+# LEITURA DOS DADOS (Apontando diretamente para a aba de respostas do formulário)
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
-    df_existente = conn.read(ttl=0)
+    # Adicionado o worksheet para ler a primeira aba padrão criada pelo Forms
+    df_existente = conn.read(worksheet="Respostas do formulário 1", ttl=0)
     
     if df_existente.empty:
         df_existente = pd.DataFrame(columns=["Data_Hora", "Nome", "Jogo", "gols_casa", "gols_fora"])
@@ -165,7 +166,7 @@ with aba_palpites:
                     nome_unificado = n
                     break
             
-            # Codificação segura dos parâmetros para a URL do Google
+            # Codificação dos parâmetros para a URL do Google
             params = {
                 ENTRY_NOME: nome_unificado,
                 ENTRY_JOGO: jogo_selecionado,
