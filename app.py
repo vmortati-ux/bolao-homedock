@@ -106,7 +106,7 @@ def calcular_pontos(p_casa, p_fora, r_casa, r_fora):
         return 3
     return 0
 
-# 5. QUADRO DE REGRAS VISUAL (Onde estava dando o erro de aspas)
+# 5. QUADRO DE REGRAS VISUAL
 st.markdown("### 📋 Regulamento de Pontuacao Homedock:")
 col_r1, col_r2, col_r3 = st.columns(3)
 with col_r1:
@@ -124,7 +124,6 @@ aba_palpites, aba_ranking, aba_admin = st.tabs(["📝 Dar Palpite", "📊 Classi
 # --- ABA 1: PALPITES ---
 with aba_palpites:
     st.subheader("Registre o seu palpite")
-    
     st.write("💡 **Orientacao Importante:** Use sempre **exatamente o mesmo nome e sobrenome** em todos os seus palpites!")
     
     nomes_existentes = sorted(list(set(str(p["Nome"]) for p in palpites_lista if pd.notna(p["Nome"]))))
@@ -189,16 +188,67 @@ with aba_ranking:
     
     pontuacao_geral = {}
     for p in palpites_lista:
-        nome_func = p["Nome"]
-        jogo_func = p["Jogo"]
+        n_func = str(p.get("Nome", "")).strip()
+        j_func = str(p.get("Jogo", "")).strip()
         
-        if pd.isna(nome_func) or pd.isna(jogo_func) or str(nome_func).strip() == "" or str(nome_func) == "Nome":
+        if not n_func or not j_func or n_func.lower() == "nome":
             continue
             
-        resultado_real = st.session_state.jogos.get(jogo_func, {"real_casa": None, "real_fora": None})
+        resultado_real = st.session_state.jogos.get(j_func, {"real_casa": None, "real_fora": None})
         r_c = resultado_real["real_casa"]
         r_f = resultado_real["real_fora"]
         
         try:
             pts = calcular_pontos(int(p["gols_casa"]), int(p["gols_fora"]), r_c, r_f)
-            if nome
+            pontuacao_geral[n_func] = pontuacao_geral.get(n_func, 0) + pts
+        except Exception:
+            continue
+
+    if pontuacao_geral:
+        df_ranking = pd.DataFrame(list(pontuacao_geral.items()), columns=["Colaborador Homedock", "Pontuacao Total"])
+        df_ranking = df_ranking.sort_values(by="Pontuacao Total", ascending=False).reset_index(drop=True)
+        df_ranking.index = df_ranking.index + 1
+        st.dataframe(df_ranking, use_container_width=True)
+        
+        st.markdown("### 📋 Histórico Detalhado de Envio")
+        if not df_existente.empty:
+            df_display = df_existente.copy()
+            df_display.columns = ["Momento do Palpite", "Colaborador", "Partida", "Gols Casa", "Gols Fora"]
+            st.dataframe(df_display, use_container_width=True)
+    else:
+        st.info("Nenhum palpite enviado ate o momento.")
+
+# --- ABA 3: ADMINISTRADOR ---
+with aba_admin:
+    st.subheader("Painel de Controle Exclusivo")
+    senha_admin = st.text_input("Digite a senha master:", type="password")
+    
+    if senha_admin == "hmdk":
+        st.success("Acesso Liberado!")
+        for jogo, resultados in st.session_state.jogos.items():
+            st.markdown(f"**{jogo}**")
+            col1, col2, col3 = st.columns([2, 2, 1])
+            val_casa = resultados["real_casa"] if resultados["real_casa"] is not None else 0
+            val_fora = whitespaces = resultados["real_fora"] if resultados["real_fora"] is not None else 0
+            
+            with col1:
+                res_casa = st.number_input("Placar Real Brasil:", min_value=0, value=val_casa, key=f"rc_{jogo}")
+            with col2:
+                res_fora = st.number_input("Placar Real Adversario:", min_value=0, value=val_fora, key=f"rf_{jogo}")
+            with col3:
+                st.write("")
+                st.write("")
+                if st.button("Confirmar", key=f"btn_{jogo}"):
+                    st.session_state.jogos[jogo]["real_casa"] = res_casa
+                    st.session_state.jogos[jogo]["real_fora"] = res_fora
+                    st.success("Placar updated!")
+                    st.rerun()
+            st.markdown("---")
+
+        st.subheader("➕ Adicionar Jogo do Brasil")
+        novo_jogo = st.text_input("Exemplo: Oitavas de Final: Brasil x Alemanha")
+        if st.button("Inserir Nova Partida"):
+            if novo_jogo:
+                st.session_state.jogos[novo_jogo] = {"real_casa": None, "real_fora": None}
+                st.success("Jogo adicionado!")
+                st.rerun()
