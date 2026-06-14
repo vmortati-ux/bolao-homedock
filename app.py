@@ -106,9 +106,99 @@ def calcular_pontos(p_casa, p_fora, r_casa, r_fora):
         return 3
     return 0
 
-# 5. QUADRO DE REGRAS VISUAL
-st.markdown("""
-<div style='background-color: white; padding: 20px; border-radius: 15px; border: 1px solid #E5E5E5; margin-bottom: 25px;'>
-    <h4 style='margin-top:0; color:#111;'>📋 Regulamento de Pontuacao Homedock:</h4>
-    <span style='background-color:#111; color:white; padding: 3px 10px; border-radius: 5px; font-weight:bold; font-size:12px; margin-right:10px;'>6 PONTOS</span> Acerto exato do placar<br>
-    <span style='background-color:#C5A880; color
+# 5. QUADRO DE REGRAS VISUAL (Onde estava dando o erro de aspas)
+st.markdown("### 📋 Regulamento de Pontuacao Homedock:")
+col_r1, col_r2, col_r3 = st.columns(3)
+with col_r1:
+    st.info("**6 PONTOS**\n\nAcerto exato do placar")
+with col_r2:
+    st.warning("**3 PONTOS**\n\nAcerto do vencedor ou empate")
+with col_r3:
+    st.error("**0 PONTOS**\n\nErro total do placar")
+
+st.markdown("---")
+
+# 6. CRIACAO DAS ABAS
+aba_palpites, aba_ranking, aba_admin = st.tabs(["📝 Dar Palpite", "📊 Classificacao Geral", "⚙️ Painel do Administrador"])
+
+# --- ABA 1: PALPITES ---
+with aba_palpites:
+    st.subheader("Registre o seu palpite")
+    
+    st.write("💡 **Orientacao Importante:** Use sempre **exatamente o mesmo nome e sobrenome** em todos os seus palpites!")
+    
+    nomes_existentes = sorted(list(set(str(p["Nome"]) for p in palpites_lista if pd.notna(p["Nome"]))))
+    
+    with st.form("form_palpite", clear_on_submit=True):
+        nome = st.text_input("Seu Nome Completo:")
+        jogo_selecionado = st.selectbox("Escolha a partida:", list(st.session_state.jogos.keys()))
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            gols_brasil = st.number_input("Gols do Brasil:", min_value=0, max_value=15, value=1, step=1)
+        with col2:
+            gols_adversario = st.number_input("Gols do Adversario:", min_value=0, max_value=15, value=0, step=1)
+            
+        enviar = st.form_submit_button("Salvar Palpite 🚀")
+        
+        if enviar:
+            nome_limpo = nome.strip()
+            if nome_limpo == "":
+                st.error("Por favor, digite seu nome antes de enviar.")
+            else:
+                ja_palpitou = any(str(p["Nome"]).lower() == nome_limpo.lower() and str(p["Jogo"]) == jogo_selecionado for p in palpites_lista)
+                
+                if ja_palpitou:
+                    st.error(f"Atencao, {nome_limpo}! Voce ja enviou um palpite para este jogo.")
+                else:
+                    nome_unificado = nome_limpo
+                    for n in nomes_existentes:
+                        if n.lower() == nome_limpo.lower():
+                            nome_unificado = n
+                            break
+                    
+                    url_form = f"https://docs.google.com/forms/d/e/{ID_FORMULARIO}/formResponse"
+                    payload = {
+                        ENTRY_NOME: nome_unificado,
+                        ENTRY_JOGO: jogo_selecionado,
+                        ENTRY_CASA: int(gols_brasil),
+                        ENTRY_FORA: int(gols_adversario)
+                    }
+                    
+                    headers = {
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    }
+                    
+                    try:
+                        res = requests.post(url_form, data=payload, headers=headers)
+                        if res.status_code == 200 or res.status_code == 302:
+                            st.success(f"Palpite de {nome_unificado} guardado com sucesso na nuvem!")
+                            st.rerun()
+                        else:
+                            st.error(f"Erro temporário ao enviar dados para o servidor do Google. (Status: {res.status_code})")
+                    except Exception as e:
+                        st.error(f"Falha de conexão: {e}")
+
+    if nomes_existentes:
+        st.markdown("<p style='font-size: 13px; color: #666; margin-bottom: 2px; margin-top: 15px;'>👥 <b>Participantes ja cadastrados:</b></p>", unsafe_allow_html=True)
+        st.caption(", ".join(nomes_existentes))
+
+# --- ABA 2: RANKING ---
+with aba_ranking:
+    st.subheader("Classificacao Atualizada dos Colaboradores")
+    
+    pontuacao_geral = {}
+    for p in palpites_lista:
+        nome_func = p["Nome"]
+        jogo_func = p["Jogo"]
+        
+        if pd.isna(nome_func) or pd.isna(jogo_func) or str(nome_func).strip() == "" or str(nome_func) == "Nome":
+            continue
+            
+        resultado_real = st.session_state.jogos.get(jogo_func, {"real_casa": None, "real_fora": None})
+        r_c = resultado_real["real_casa"]
+        r_f = resultado_real["real_fora"]
+        
+        try:
+            pts = calcular_pontos(int(p["gols_casa"]), int(p["gols_fora"]), r_c, r_f)
+            if nome
