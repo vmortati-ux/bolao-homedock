@@ -36,7 +36,7 @@ if "jogos" not in st.session_state:
 
 # Método alternativo que lê o HTML público da planilha sem precisar "Publicar na Web"
 try:
-    url_html = "https://docs.google.com/spreadsheets/d/1S0ch85t9DDzNJZXp5mZFSdNv4Em6An51MN_tYHRZCN8/preview?gid=1829076272"
+    url_html = "https://docs.google.com/spreadsheets/d/1S0ch85t9DDzNJZXp5mZFSdNv4Em6An51MN_tYHRZCN8/edit?resourcekey=&gid=1829076272#gid=1829076272"
     tabelas = pd.read_html(url_html, header=1)
     df_existente = tabelas[0]
     
