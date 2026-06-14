@@ -3,7 +3,7 @@ import pandas as pd
 from PIL import Image
 import os
 import urllib.parse
-from streamlit_gsheets import GSheetsConnection
+import requests
 
 # 1. CONFIGURACAO DA PAGINA
 st.set_page_config(
@@ -71,6 +71,9 @@ ENTRY_JOGO = "entry.1347005369"
 ENTRY_CASA = "entry.1938823404"
 ENTRY_FORA = "entry.1888761423"
 
+# LINK DA SUA PLANILHA ATUALIZADA
+LINK_PLANILHA = "https://docs.google.com/spreadsheets/d/1S0ch85t9DDzNJZXp5mZFSdNv4Em6An51MN_tYHRZCN8/edit"
+
 # 2. TOPO COM LOGO E TITULO ALINHADOS NA MESMA ALTURA
 col_logo, col_titulo = st.columns([0.6, 3.4], vertical_alignment="center")
 
@@ -94,17 +97,18 @@ if "jogos" not in st.session_state:
         "Fase de Grupos: Brasil x Escocia": {"real_casa": None, "real_fora": None},
     }
 
-# LEITURA DOS DADOS (Apontando diretamente para a aba de respostas do formulário)
+# LEITURA DIRETA DOS DADOS VIA FORMATO CSV (Ignora o erro de publicação do conector antigo)
 try:
-    conn = st.connection("gsheets", type=GSheetsConnection)
-    # Adicionado o worksheet para ler a primeira aba padrão criada pelo Forms
-    df_existente = conn.read(worksheet="Respostas do formulário 1", ttl=0)
+    # Transforma o link de edição no link direto de exportação de dados da aba correta
+    url_csv = f"https://docs.google.com/spreadsheets/d/1S0ch85t9DDzNJZXp5mZFSdNv4Em6An51MN_tYHRZCN8/export?format=csv&gid=1829076272"
+    df_existente = pd.read_csv(url_csv)
     
     if df_existente.empty:
         df_existente = pd.DataFrame(columns=["Data_Hora", "Nome", "Jogo", "gols_casa", "gols_fora"])
     else:
+        # Garante o mapeamento das 5 colunas que o Google Forms cria por padrão
         df_existente.columns = ["Data_Hora", "Nome", "Jogo", "gols_casa", "gols_fora"]
-except Exception:
+except Exception as e:
     df_existente = pd.DataFrame(columns=["Data_Hora", "Nome", "Jogo", "gols_casa", "gols_fora"])
 
 palpites_lista = df_existente.to_dict(orient="records")
@@ -193,7 +197,7 @@ with aba_ranking:
         n_func = str(p.get("Nome", "")).strip()
         j_func = str(p.get("Jogo", "")).strip()
         
-        if not n_func or not j_func or n_func.lower() == "nome":
+        if not n_func or not j_func or n_func.lower() == "nome" or n_func.lower() == "nan":
             continue
             
         resultado_real = st.session_state.jogos.get(j_func, {"real_casa": None, "real_fora": None})
@@ -250,7 +254,3 @@ with aba_admin:
         st.subheader("➕ Adicionar Jogo do Brasil")
         novo_jogo = st.text_input("Exemplo: Oitavas de Final: Brasil x Alemanha")
         if st.button("Inserir Nova Partida"):
-            if novo_jogo:
-                st.session_state.jogos[novo_jogo] = {"real_casa": None, "real_fora": None}
-                st.success("Jogo adicionado!")
-                st.rerun()
