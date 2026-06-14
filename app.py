@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import os
 import urllib.parse
 
 # 1. CONFIGURACAO DA PAGINA
@@ -10,7 +9,6 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilizacao customizada com a identidade visual da Homedock
 st.markdown("""
     <style>
     .stApp { background-color: #FAF9F6; color: #111111; }
@@ -36,16 +34,16 @@ if "jogos" not in st.session_state:
         "Fase de Grupos: Brasil x Escocia": {"real_casa": None, "real_fora": None},
     }
 
-# LENDO OS DADOS DE FORMA 100% DIRETA E INDEPENDENTE
+# Método alternativo que lê o HTML público da planilha sem precisar "Publicar na Web"
 try:
-    # URL de exportação pública oficial do Google que ignora qualquer biblioteca do Streamlit
-    url_csv = "https://docs.google.com/spreadsheets/d/1S0ch85t9DDzNJZXp5mZFSdNv4Em6An51MN_tYHRZCN8/export?format=csv&gid=1829076272"
-    df_existente = pd.read_csv(url_csv)
+    url_html = "https://docs.google.com/spreadsheets/d/1S0ch85t9DDzNJZXp5mZFSdNv4Em6An51MN_tYHRZCN8/preview?gid=1829076272"
+    tabelas = pd.read_html(url_html, header=1)
+    df_existente = tabelas[0]
     
-    if not df_existente.empty:
-        df_existente.columns = ["Data_Hora", "Nome", "Jogo", "gols_casa", "gols_fora"]
-    else:
-        df_existente = pd.DataFrame(columns=["Data_Hora", "Nome", "Jogo", "gols_casa", "gols_fora"])
+    # Limpa colunas extras que o preview do Google gera
+    df_existente = df_existente.iloc[:, 1:6]
+    df_existente.columns = ["Data_Hora", "Nome", "Jogo", "gols_casa", "gols_fora"]
+    df_existente = df_existente.dropna(subset=["Nome"])
 except Exception:
     df_existente = pd.DataFrame(columns=["Data_Hora", "Nome", "Jogo", "gols_casa", "gols_fora"])
 
@@ -53,9 +51,9 @@ palpites_lista = df_existente.to_dict(orient="records")
 
 def calcular_pontos(p_casa, p_fora, r_casa, r_fora):
     if r_casa is None or r_fora is None: return 0 
-    if p_casa == r_casa and p_fora == r_fora: return 6
-    v_p = "casa" if p_casa > p_fora else ("fora" if p_fora > p_casa else "empate")
-    v_r = "casa" if r_casa > r_fora else ("fora" if r_fora > r_casa else "empate")
+    if int(p_casa) == int(r_casa) and int(p_fora) == int(r_fora): return 6
+    v_p = "casa" if int(p_casa) > int(p_fora) else ("fora" if int(p_fora) > int(p_casa) else "empate")
+    v_r = "casa" if int(r_casa) > int(r_fora) else ("fora" if int(r_fora) > int(r_casa) else "empate")
     return 3 if v_p == v_r else 0
 
 st.markdown("### 📋 Regulamento: **6 PTS** placar exato | **3 PTS** vencedor/empate")
@@ -92,10 +90,10 @@ with aba_ranking:
     for p in palpites_lista:
         n_func = str(p.get("Nome", "")).strip()
         j_func = str(p.get("Jogo", "")).strip()
-        if not n_func or not j_func or n_func.lower() in ["nome", "nan"]: continue
+        if not n_func or not j_func or n_func.lower() in ["nome", "nan", "timestamp"]: continue
         res_real = st.session_state.jogos.get(j_func, {"real_casa": None, "real_fora": None})
         try:
-            pts = calcular_pontos(int(p["gols_casa"]), int(p["gols_fora"]), res_real["real_casa"], res_real["real_fora"])
+            pts = calcular_pontos(p["gols_casa"], p["gols_fora"], res_real["real_casa"], res_real["real_fora"])
             pontuacao_geral[n_func] = pontuacao_geral.get(n_func, 0) + pts
         except: continue
 
