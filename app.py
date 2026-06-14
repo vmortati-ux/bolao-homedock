@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from PIL import Image
 import os
-import requests
+import urllib.parse
 from streamlit_gsheets import GSheetsConnection
 
 # 1. CONFIGURACAO DA PAGINA
@@ -47,6 +47,20 @@ st.markdown("""
         font-weight: 700 !important;
         border-bottom-color: #111111 !important;
     }
+    .btn-enviar {
+        display: inline-block;
+        padding: 0.6rem 2rem;
+        background-color: #111111;
+        color: white !important;
+        text-decoration: none;
+        border-radius: 12px;
+        font-weight: 600;
+        text-align: center;
+        margin-top: 10px;
+    }
+    .btn-enviar:hover {
+        background-color: #333333;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -80,7 +94,7 @@ if "jogos" not in st.session_state:
         "Fase de Grupos: Brasil x Escocia": {"real_casa": None, "real_fora": None},
     }
 
-# LEITURA DOS DADOS (Apenas leitura via conexão nativa do Streamlit)
+# LEITURA DOS DADOS (Via conexão nativa do Streamlit)
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
     df_existente = conn.read(ttl=0)
@@ -123,60 +137,47 @@ aba_palpites, aba_ranking, aba_admin = st.tabs(["📝 Dar Palpite", "📊 Classi
 
 # --- ABA 1: PALPITES ---
 with aba_palpites:
-    st.subheader("Registre o seu palpite")
+    st.subheader("Prepare o seu palpite")
     st.write("💡 **Orientacao Importante:** Use sempre **exatamente o mesmo nome e sobrenome** em todos os seus palpites!")
     
     nomes_existentes = sorted(list(set(str(p["Nome"]) for p in palpites_lista if pd.notna(p["Nome"]))))
     
-    with st.form("form_palpite", clear_on_submit=True):
-        nome = st.text_input("Seu Nome Completo:")
-        jogo_selecionado = st.selectbox("Escolha a partida:", list(st.session_state.jogos.keys()))
+    nome = st.text_input("Seu Nome Completo:", key="input_nome")
+    jogo_selecionado = st.selectbox("Escolha a partida:", list(st.session_state.jogos.keys()), key="select_jogo")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        gols_brasil = st.number_input("Gols do Brasil:", min_value=0, max_value=15, value=1, step=1, key="g_casa")
+    with col2:
+        gols_adversario = st.number_input("Gols do Adversario:", min_value=0, max_value=15, value=0, step=1, key="g_fora")
         
-        col1, col2 = st.columns(2)
-        with col1:
-            gols_brasil = st.number_input("Gols do Brasil:", min_value=0, max_value=15, value=1, step=1)
-        with col2:
-            gols_adversario = st.number_input("Gols do Adversario:", min_value=0, max_value=15, value=0, step=1)
+    nome_limpo = nome.strip()
+    
+    if nome_limpo != "":
+        ja_palpitou = any(str(p["Nome"]).lower() == nome_limpo.lower() and str(p["Jogo"]) == jogo_selecionado for p in palpites_lista)
+        
+        if ja_palpitou:
+            st.error(f"Atencao, {nome_limpo}! Voce ja enviou um palpite para este jogo.")
+        else:
+            nome_unificado = nome_limpo
+            for n in nomes_existentes:
+                if n.lower() == nome_limpo.lower():
+                    nome_unificado = n
+                    break
             
-        enviar = st.form_submit_button("Salvar Palpite 🚀")
-        
-        if enviar:
-            nome_limpo = nome.strip()
-            if nome_limpo == "":
-                st.error("Por favor, digite seu nome antes de enviar.")
-            else:
-                ja_palpitou = any(str(p["Nome"]).lower() == nome_limpo.lower() and str(p["Jogo"]) == jogo_selecionado for p in palpites_lista)
-                
-                if ja_palpitou:
-                    st.error(f"Atencao, {nome_limpo}! Voce ja enviou um palpite para este jogo.")
-                else:
-                    nome_unificado = nome_limpo
-                    for n in nomes_existentes:
-                        if n.lower() == nome_limpo.lower():
-                            nome_unificado = n
-                            break
-                    
-                    url_form = f"https://docs.google.com/forms/d/e/{ID_FORMULARIO}/formResponse"
-                    payload = {
-                        ENTRY_NOME: nome_unificado,
-                        ENTRY_JOGO: jogo_selecionado,
-                        ENTRY_CASA: int(gols_brasil),
-                        ENTRY_FORA: int(gols_adversario)
-                    }
-                    
-                    headers = {
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                    }
-                    
-                    try:
-                        res = requests.post(url_form, data=payload, headers=headers)
-                        if res.status_code == 200 or res.status_code == 302:
-                            st.success(f"Palpite de {nome_unificado} guardado com sucesso na nuvem!")
-                            st.rerun()
-                        else:
-                            st.error(f"Erro temporário ao enviar dados para o servidor do Google. (Status: {res.status_code})")
-                    except Exception as e:
-                        st.error(f"Falha de conexão: {e}")
+            # Codificação segura dos parâmetros para a URL do Google
+            params = {
+                ENTRY_NOME: nome_unificado,
+                ENTRY_JOGO: jogo_selecionado,
+                ENTRY_CASA: str(int(gols_brasil)),
+                ENTRY_FORA: str(int(gols_adversario))
+            }
+            url_preenchida = f"https://docs.google.com/forms/d/e/{ID_FORMULARIO}/viewform?usp=pp_url&{urllib.parse.urlencode(params)}"
+            
+            st.markdown(f'<a href="{url_preenchida}" target="_blank" class="btn-enviar">Confirmar e Enviar no Google Forms 🚀</a>', unsafe_allow_html=True)
+            st.caption("Clique no botão acima para abrir a janela de envio seguro do Google. Lá, basta clicar no botão 'Enviar' azul da página.")
+    else:
+        st.warning("Por favor, digite seu nome completo para habilitar o botão de envio.")
 
     if nomes_existentes:
         st.markdown("<p style='font-size: 13px; color: #666; margin-bottom: 2px; margin-top: 15px;'>👥 <b>Participantes ja cadastrados:</b></p>", unsafe_allow_html=True)
@@ -229,7 +230,7 @@ with aba_admin:
             st.markdown(f"**{jogo}**")
             col1, col2, col3 = st.columns([2, 2, 1])
             val_casa = resultados["real_casa"] if resultados["real_casa"] is not None else 0
-            val_fora = whitespaces = resultados["real_fora"] if resultados["real_fora"] is not None else 0
+            val_fora = resultados["real_fora"] if resultados["real_fora"] is not None else 0
             
             with col1:
                 res_casa = st.number_input("Placar Real Brasil:", min_value=0, value=val_casa, key=f"rc_{jogo}")
