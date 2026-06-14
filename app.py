@@ -3,7 +3,6 @@ import pandas as pd
 from PIL import Image
 import os
 import urllib.parse
-import requests
 
 # 1. CONFIGURACAO DA PAGINA
 st.set_page_config(
@@ -94,16 +93,19 @@ if "jogos" not in st.session_state:
         "Fase de Grupos: Brasil x Escocia": {"real_casa": None, "real_fora": None},
     }
 
-# LEITURA DIRETA DOS DADOS VIA FORMATO CSV
+# LEITURA DOS DADOS UTILIZANDO LINK DIRETO VIA PANDAS (SEM CONECTOR)
+# ID da planilha extraído do seu link: 1S0ch85t9DDzNJZXp5mZFSdNv4Em6An51MN_tYHRZCN8
+# GID da aba extraído do seu link: 1829076272
 try:
-    url_csv = "https://docs.google.com/spreadsheets/d/1S0ch85t9DDzNJZXp5mZFSdNv4Em6An51MN_tYHRZCN8/export?format=csv&gid=1829076272"
-    df_existente = pd.read_csv(url_csv)
+    url_direta = "https://docs.google.com/spreadsheets/d/1S0ch85t9DDzNJZXp5mZFSdNv4Em6An51MN_tYHRZCN8/export?format=csv&gid=1829076272"
+    df_existente = pd.read_csv(url_direta)
     
     if df_existente.empty:
         df_existente = pd.DataFrame(columns=["Data_Hora", "Nome", "Jogo", "gols_casa", "gols_fora"])
     else:
         df_existente.columns = ["Data_Hora", "Nome", "Jogo", "gols_casa", "gols_fora"]
-except Exception:
+except Exception as e:
+    # Caso falte dados ou a planilha esteja vazia no início
     df_existente = pd.DataFrame(columns=["Data_Hora", "Nome", "Jogo", "gols_casa", "gols_fora"])
 
 palpites_lista = df_existente.to_dict(orient="records")
