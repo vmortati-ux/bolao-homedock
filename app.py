@@ -168,12 +168,43 @@ with aba_palpites:
                     }
                     
                     try:
-                        res = requests.post(url_form, data=payload)
-                        if res.status_code == 200:
+                       if enviar:
+            nome_limpo = nome.strip()
+            if nome_limpo == "":
+                st.error("Por favor, digite seu nome antes de enviar.")
+            else:
+                ja_palpitou = any(str(p["Nome"]).lower() == nome_limpo.lower() and str(p["Jogo"]) == jogo_selecionado for p in palpites_lista)
+                
+                if ja_palpitou:
+                    st.error(f"Atencao, {nome_limpo}! Voce ja enviou um palpite para este jogo.")
+                else:
+                    nome_unificado = nome_limpo
+                    for n in nomes_existentes:
+                        if n.lower() == nome_limpo.lower():
+                            nome_unificado = n
+                            break
+                    
+                    url_form = f"https://docs.google.com/forms/d/e/{ID_FORMULARIO}/formResponse"
+                    payload = {
+                        ENTRY_NOME: nome_unificado,
+                        ENTRY_JOGO: jogo_selecionado,
+                        ENTRY_CASA: int(gols_brasil),
+                        ENTRY_FORA: int(gols_adversario)
+                    }
+                    
+                    # Cabeçalho para simular um navegador real e evitar bloqueios do Google
+                    headers = {
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    }
+                    
+                    try:
+                        # Enviamos os dados incluindo os headers de segurança
+                        res = requests.post(url_form, data=payload, headers=headers)
+                        if res.status_code == 200 or res.status_code == 302:
                             st.success(f"Palpite de {nome_unificado} guardado com sucesso na nuvem!")
                             st.rerun()
                         else:
-                            st.error("Erro temporário ao enviar dados para o servidor do Google.")
+                            st.error(f"Erro temporário ao enviar dados para o servidor do Google. (Status: {res.status_code})")
                     except Exception as e:
                         st.error(f"Falha de conexão: {e}")
 
